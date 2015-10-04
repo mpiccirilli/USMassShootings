@@ -8,4 +8,6 @@ The data used was found here:  http://shootingtracker.com/wiki/Main_Page
 
 ![top10States](https://github.com/mpiccirilli/USMassShootings/blob/master/plots/Top10States.jpg)
 
+![top10Location](https://github.com/mpiccirilli/USMassShootings/blob/master/plots/top10Location.jpg)
+
 ![mapPlot](https://github.com/mpiccirilli/USMassShootings/blob/master/plots/victByLocation.jpg)
