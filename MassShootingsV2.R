@@ -179,3 +179,5 @@ p2 <- suppressMessages( ggmap(myMap) +
                                      alpha=.5) +
                           ggtitle("Total Number of Victims Per Location"))
 print(p2)
+
+save(list = ls(), file = 'data.RData')
