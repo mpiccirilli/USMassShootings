@@ -34,7 +34,7 @@ dtList[[3]] = shooting2015[, .(Date, Shooter, Dead, Injured, Location)]
 DT <- rbindlist(dtList)
 sapply(DT, class)
 head(DT)
-DT[, c("Date","Shooter","Location") := 
+DT[, c("Date","Shooter","Location") :=
      list(as.Date(Date, format="%m/%d/%Y"), as.character(Shooter), as.character(Location))]
 
 
@@ -50,7 +50,7 @@ DT[Location == "Manhattan, NY"]$Location <- "New York, NY"
 DT[Location == "St Louis, MO"]$Location  <- "St. Louis, MO"
 DT[Location == "St. Petersberg, FL"]$Location <- "St. Petersburg, FL"
 DT[Location == "Phoenix, Az" ]$Location <- "Phoenix, AZ"
-DT[Location == "Washington DC" | Location == "Washington, D.C."]$Location <- "Washington, DC" 
+DT[Location == "Washington DC" | Location == "Washington, D.C."]$Location <- "Washington, DC"
 DT[Location == "Saginaw, Mi"]$Location <- "Saginaw, MI"
 DT[Location == "Cyprus, TX"]$Location <- "Cypress, TX"
 DT[Location == "Dallas, Tx"]$Location <- "Dallas, TX"
@@ -79,7 +79,7 @@ DT[Location == "San Juan, Puerto Rico"]$Location <- "San Juan, PR"
 DT[Location == "Alturas, Ca"]$Location <- "Alturas, CA"
 DT[Location == "Fairfield, Ca"]$Location <- "Fairfield, CA"
 DT[Location == "Jackson, Tennessee"]$Location <- "Jackson, TN"
-DT[68]$Location <- "Manhatten, KS" 
+DT[68]$Location <- "Manhatten, KS"
 DT[417]$Location <- "Sikeston, MO"
 DT[Location == "Jacksonville, Fl"]$Location <- "Jacksonville, FL"
 DT[Location == "Havey, Louisiana"]$Location <- "Harvey, LA"
@@ -93,25 +93,25 @@ DT[Location == "Winton Hills, OH"]$Location <- "Cincinnati, OH"
 DT[, LocationFreq := .N, by = Location]
 
 # Create a variable of each state abbreviation:
-DT[, State := substr(DT$Location, 
-                      start = nchar(DT$Location)-1, 
+DT[, State := substr(DT$Location,
+                      start = nchar(DT$Location)-1,
                       stop = nchar(DT$Location))]
 table(DT$State)
 DT[, StateFreq := .N, by = State ]
 
-# Create columns for the year, month, month-year, 
+# Create columns for the year, month, month-year,
 # and the total number of victims (adding the killed + injured)
-DT[, c("year", "month", "monthYear", "nVictims") := 
+DT[, c("year", "month", "monthYear", "nVictims") :=
      list(year(Date), month(Date), paste0(month(Date), "-", year(Date)),Dead+Injured)]
 
 # Here we're find the total number of victims by month-year, and by state
 DT[, nMonthYearVictims := sum(nVictims), by = monthYear]
 DT[, nVictimsPerState := sum(nVictims), by = State]
 
-# We can take a look at the number of Victims per Monty by Year 
-ggplot(unique(DT[,.(year, month, monthYear, nMonthYearVictims)]), 
-       aes(x=factor(month), y=nMonthYearVictims)) + 
-  geom_bar(stat="identity") + 
+# We can take a look at the number of Victims per Monty by Year
+ggplot(unique(DT[,.(year, month, monthYear, nMonthYearVictims)]),
+       aes(x=factor(month), y=nMonthYearVictims)) +
+  geom_bar(stat="identity") +
   facet_wrap(~year) + ggtitle("Number of Victims Per Month By Year")
 
 
@@ -150,7 +150,7 @@ setkey(DT, Location)
 DT = locationCoords[DT]
 
 ### Make the map
-myMap <- suppressMessages(get_map(location = 'united states', 
+myMap <- suppressMessages(get_map(location = 'united states',
                                 zoom = 4, source = 'google'))
 
 # Plot two maps, not sure if there's going to be any noticable difference
@@ -158,22 +158,24 @@ myMap <- suppressMessages(get_map(location = 'united states',
 # 2) total number of victims at each location
 
 forMap1 <- unique( DT[, .(lon, lat, nVictimsPerIncident)] )
-p1 <- suppressMessages( ggmap(myMap) + 
-                          geom_point(aes(x=lon, y=lat), 
+p1 <- suppressMessages( ggmap(myMap) +
+                          geom_point(aes(x=lon, y=lat),
                                      data = forMap1,
                                      size=forMap1$nVictimsPerIncident,
-                                     colour="red", 
-                                     alpha=.5) + 
+                                     colour="red",
+                                     alpha=.5) +
                                      ggtitle("Avg Number of Victims Per Incident & Location"))
 print(p1)
 
 
 forMap2 <- unique( DT[, .(lon, lat, nVictimsPerLocation)] )
-p2 <- suppressMessages( ggmap(myMap) + 
-                          geom_point(aes(x=lon, y=lat), 
+p2 <- suppressMessages( ggmap(myMap) +
+                          geom_point(aes(x=lon, y=lat),
                                      data = forMap2,
                                      size=forMap2$nVictimsPerLocation,
-                                     colour="red", 
-                                     alpha=.5) + 
+                                     colour="red",
+                                     alpha=.5) +
                           ggtitle("Total Number of Victims Per Location"))
 print(p2)
+
+save(list = ls(), file = 'data.RData')
