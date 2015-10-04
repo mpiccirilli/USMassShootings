@@ -108,6 +108,8 @@ DT[, c("year", "month", "monthYear", "nVictims") :=
 DT[, nMonthYearVictims := sum(nVictims), by = monthYear]
 DT[, nVictimsPerState := sum(nVictims), by = State]
 
+
+
 # We can take a look at the number of Victims per Monty by Year
 ggplot(unique(DT[,.(year, month, monthYear, nMonthYearVictims)]),
        aes(x=factor(month), y=nMonthYearVictims)) +
@@ -133,6 +135,24 @@ ggplot(top10StateYear, aes(x=factor(State), y=nVictByYear, fill = factor(year)))
 
 DT[, nVictimsPerLocation := sum(nVictims), by = Location]
 DT[, nVictimsPerIncident := nVictimsPerLocation / LocationFreq]
+
+# Top 10 Locations with total victims
+top10LocationVicts = unique(DT[, .(Location, nVictimsPerLocation)])[
+  order(-nVictimsPerLocation)][1:10][
+    ,Location := factor(Location, levels = Location[1:10])]
+
+
+top10LocationYear = unique(DT[Location %in% top10LocationVicts$Location,
+                           .(year, Location, nVictims)][
+                             ,nVictByYear := sum(nVictims), by=.(year, Location) ][
+                               ,nVictims:=NULL][
+                                 , Location := factor(Location, levels = top10LocationVicts$Location)] )
+
+ggplot(top10LocationYear, aes(x=factor(Location), y=nVictByYear, fill = factor(year))) +
+  geom_bar(stat="identity") + ggtitle("Top 10 Locations with the most victims") + xlab("Location")
+
+
+
 
 # Now let's plot this stuff on a map
 # We'll need to get the lon-lat coordinates
