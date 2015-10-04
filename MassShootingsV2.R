@@ -112,7 +112,7 @@ DT[, nVictimsPerState := sum(nVictims), by = State]
 ggplot(unique(DT[,.(year, month, monthYear, nMonthYearVictims)]),
        aes(x=factor(month), y=nMonthYearVictims)) +
   geom_bar(stat="identity") +
-  facet_wrap(~year) + ggtitle("Number of Victims Per Month By Year")
+  facet_wrap(~year) + ggtitle("Number of Victims Per Month By Year") + xlab("Month")
 
 
 # Top 10 States with total victims
@@ -127,7 +127,7 @@ top10StateYear = unique(DT[State %in% top10StateVicts$State,
                ,nVictims:=NULL][, State := factor(State, levels = top10StateVicts$State)] )
 
 ggplot(top10StateYear, aes(x=factor(State), y=nVictByYear, fill = factor(year))) +
-  geom_bar(stat="identity") + ggtitle("Top 10 States with the most victims")
+  geom_bar(stat="identity") + ggtitle("Top 10 States with the most victims") + xlab("State")
 
 
 
