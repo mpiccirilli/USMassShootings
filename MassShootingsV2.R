@@ -1,5 +1,4 @@
 # Load the required libraries
-
 library(RCurl)
 library(data.table)
 library(ggmap)
@@ -116,8 +115,7 @@ ggplot(unique(DT[,.(year, month, monthYear, nMonthYearVictims)]),
   facet_wrap(~year) + ggtitle("Number of Victims Per Month By Year")
 
 
-
-# Top 10 State
+# Top 10 States with total victims
 top10StateVicts = unique(DT[, .(State, nVictimsPerState)])[
   order(-nVictimsPerState)][1:10][
     ,State := factor(State, levels = State[1:10])]
