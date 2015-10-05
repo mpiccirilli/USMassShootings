@@ -156,8 +156,6 @@ ggplot(top10LocationYear, aes(x=factor(Location), y=nVictByYear, fill = factor(y
 
 
 
-
-
 # Now let's plot this stuff on a map
 # We'll need to get the lon-lat coordinates
 # As of 10/3/2015, there are 504 unique locations
@@ -178,17 +176,17 @@ DT = locationCoords[DT]
 # in the top 10. Let's take a closwer look. At california..
 unique(DT[State == "CA",]$Location) # There are 56 different cities in California
 topCali = unique(DT[State == "CA", .(Location, LocationFreq, nVictimsPerLocation, lon, lat)][
-  order(-LocationFreq)][LocationFreq > 1])
+  order(-nVictimsPerLocation)])[1:10]
 topCali
 
 
-caliMap <- get_mapp(location = "California, USA", zoom = 6)
+caliMap <- get_map(location = "California, USA", zoom = 6)
 pCali <- suppressMessages(ggmap(caliMap) + 
                             geom_point(aes(x=lon, y=lat),
                                        data = topCali,
                                        size=(topCali$nVictimsPerLocation*1/3),
                                        colour="red",alpha=.5) +
-                            ggtitle("Victims in California"))
+                            ggtitle("Top 10 Victimous cities in California"))
 print(pCali)
 ggsave("~/GitHub/USMassShootings/plots/caliMap.jpg")
 
