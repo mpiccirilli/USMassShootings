@@ -2,7 +2,7 @@
 library(RCurl)
 library(data.table)
 library(ggmap)
-
+rm(list=ls())
 
 # Links to the data files
 link2013 <- "http://shootingtracker.com/tracker/2013MASTER.csv"
@@ -40,10 +40,7 @@ DT[, c("Date","Shooter","Location") :=
 
 # After prior inspection, I've found the follow misspellings
 # or other slight variations of the same location and want to convert
-DT[Location == "Queens, NY"]$Location <- "New York, NY"
-DT[Location == "Bronx, NY"]$Location <- "New York, NY"
-#DT[Location == "Brooklyn (Bushwick), NY"]$Location <- "New York, NY"
-#DT[Location == "Brooklyn (Crown Heights), NY"]$Location <- "Brooklyn, NY"
+DT[Location == "Bronx, NY"]$Location <- "Bronx County, NY"
 DT[Location == "Chicago, Il"]$Location <- "Chicago, IL"
 DT[Location == "New York (Queens), NY"]$Location <- "New York, NY"
 DT[Location == "Manhattan, NY"]$Location <- "New York, NY"
@@ -88,6 +85,9 @@ DT[Location == "Witchita, KA"]$Location <- "Wichita, KS"
 DT[Location == "Parsons, KA"]$Location <- "Parsons, KS"
 DT[Location == "Topeka, KA"]$Location <- "Topeka, KS"
 DT[Location == "Winton Hills, OH"]$Location <- "Cincinnati, OH"
+DT[Location == "Harbor Gateway (Los Angeles), CA"]$Location <- "Los Angeles, CA"
+DT[Location == "Merced County, CA"]$Location <- "Merced, CA"
+
 
 # Find the number of times each location pops up
 DT[, LocationFreq := .N, by = Location]
@@ -149,7 +149,11 @@ top10LocationYear = unique(DT[Location %in% top10LocationVicts$Location,
                                  , Location := factor(Location, levels = top10LocationVicts$Location)] )
 
 ggplot(top10LocationYear, aes(x=factor(Location), y=nVictByYear, fill = factor(year))) +
-  geom_bar(stat="identity") + ggtitle("Top 10 Locations with the most victims") + xlab("Location")
+  geom_bar(stat="identity") + 
+  ggtitle("Top 10 cities with the most victims") + xlab("City") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
 
 
 
@@ -169,6 +173,25 @@ locationCoords = data.table(Location = uniqueLocations,
 setkey(DT, Location)
 DT = locationCoords[DT]
 
+
+# California had the highest numebr of mass murder victims, yet none of it's cities showed up
+# in the top 10. Let's take a closwer look. At california..
+unique(DT[State == "CA",]$Location) # There are 56 different cities in California
+topCali = unique(DT[State == "CA", .(Location, LocationFreq, nVictimsPerLocation, lon, lat)][
+  order(-LocationFreq)][LocationFreq > 1])
+topCali
+
+
+caliMap <- get_mapp(location = "California, USA", zoom = 6)
+pCali <- suppressMessages(ggmap(caliMap) + 
+                            geom_point(aes(x=lon, y=lat),
+                                       data = topCali,
+                                       size=(topCali$nVictimsPerLocation*1/3),
+                                       colour="red",alpha=.5) +
+                            ggtitle("Victims in California"))
+print(pCali)
+ggsave("~/GitHub/USMassShootings/plots/caliMap.jpg")
+
 ### Make the map
 myMap <- suppressMessages(get_map(location = 'united states',
                                 zoom = 4, source = 'google'))
@@ -186,7 +209,7 @@ p1 <- suppressMessages( ggmap(myMap) +
                                      alpha=.5) +
                                      ggtitle("Avg Number of Victims Per Incident & Location"))
 print(p1)
-
+ggsave("~/GitHub/USMassShootings/plots/usaMap.jpg")
 
 forMap2 <- unique( DT[, .(lon, lat, nVictimsPerLocation)] )
 p2 <- suppressMessages( ggmap(myMap) +
