@@ -15,13 +15,24 @@ shinyUI(fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-        # nothing in the side bar for now
+      
+        helpText("Create map of victims for each state or for the entire US."),
+      
+      selectInput("var", 
+                  label = "Choose a variable to display",
+                  choices = unique(DT$State),
+                  selected = "Percent White"),
+      
+      sliderInput("years", 
+                  label = "Range of Years:",
+                  min = min(DT$year), max = max(DT$year),
+                  value = c(2013,2015), step =1 )
     ),
 
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("plot1"),
-      plotOutput("plot2")
+      #plotOutput("plot1"),
+      #plotOutput("plot2")
     )
   )
 ))

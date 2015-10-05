@@ -4,15 +4,12 @@
 #
 # http://shiny.rstudio.com
 #
-
 library(shiny)
-load('../data.RData')
-print(p1)
-print(p2)
+library(data.table)
 
 shinyServer(function(input, output) {
 
-  output$plot1 <- renderPlot({p1})
+  
+  #output$plot1 <- renderPlot({p1})
 
-  output$plot2 <- renderPlot({p2})
 })
