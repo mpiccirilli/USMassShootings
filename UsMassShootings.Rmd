@@ -227,7 +227,7 @@ ggplot(p2[-nrow(p2)], aes(x = monthYear, y = nIncidentsMoYr, size = avgVictimsMo
 ```
 <p>
 
-Now let's start to take a look at where some of these incidents are occuring. Let's start off by looking at state-level data.  We've already calculated the `nVictimsPerState`, so here we're just going to sort and plot the data.  Here we plot the top 10 states with the most victims, with stacked by year.
+Now let's start to take a look at where some of these incidents are occuring. Let's start off by looking at state-level data.  We've already calculated the `nVictimsPerState`, so here we're just going to sort and plot the data.  Here we plot the top 10 states with the most victims, stacked by year.
 
 <p>
 ```{r, top10States, message=FALSE, results='hide', fig.align='center', fig.width=12}
