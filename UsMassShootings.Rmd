@@ -1,14 +1,17 @@
 ---
-title: "US Mass Shootings"
+title: "Exploring US Mass Shootings in R"
 author: "Michael Piccirilli"
 date: "December 6, 2015"
-output: html_document
+output:
+  html_document:
+    toc: true
+    theme: united
 ---
 
 
-Mass shootings have become a hot topic recently, so I found some data on the website [Shooting Tracker](http://www.shootingtracker.com), which has recorded Mass Shootings from 2013 to present. Each incident is cited by a news source, and is defined as having 4 or more victims, either killed or injured. 
+Mass shootings have become a hot topic recently, so I found some data to explore on the website [Shooting Tracker](http://www.shootingtracker.com), which has recorded Mass Shootings from 2013 to present. Each incident is cited by a news source, and is defined as having 4 or more victims, either killed or injured. 
 
-**I also want to start off by saying I am not advocating for or against gun-control, I simply wanted to explore the data**
+**I also want to start off by saying I am not advocating for or against gun-control, I simply wanted to explore the data.**
 
 
 ```{r loadPackages, eval = TRUE, echo=TRUE, collapse=TRUE, message=FALSE}
@@ -27,8 +30,9 @@ There are two options to load the data from Shooting Tracker, the code below sho
 1. Download yearly CSV files directly from the website
 2. Download data onto your computer then laod then into R
 
-I will be using data I downloaded on `December 2, 2015`, after the shooting in San Bernardino, CA, and I've uploaded the file onto my [GitHub repo](https://github.com/mpiccirilli/USMassShootings) so that these results can be reproduced.
+I will be using data I downloaded on `December 2, 2015`, after the shooting in San Bernardino, CA, and I've uploaded the file onto a [GitHub repo](https://github.com/mpiccirilli/USMassShootings) so that these results can be reproduced.
 
+# Loading the data
 <p>
 ```{r loadData_option1, echo=TRUE, eval=FALSE}
 
@@ -62,13 +66,14 @@ DT[, c("Date","Shooter","Location") :=
 
 ```{r loadData_option2, eval=TRUE, echo=TRUE, cache=TRUE, cache.vars=TRUE}
 # Option 2: Download Files and Load via HD
-setwd('~/Downloads/') # working directory of where you downloaded the file from GitHub
+setwd('~/Downloads/') 
+# File located on my GitHub page
 DT <- fread("MassShootings_20151202.csv")
 head(DT)
 ```
 <p>
 
-Once the data is loaded we'll need to go through the `Location` column and manually clean up misspellings or slight variations of the same location.  I've cleaned the data up through 2015-12-02, however I don't show the code here. If you download the **.Rmd** file that produced this page you will see all the code in a hidden code chunk.
+Once the data is loaded we'll need to go through the `Location` column and manually clean up misspellings or slight variations of the same location.  I've cleaned the data up through 2015-12-02, however I don't show the code here. If you download the **.Rmd** file that produced this page on my [GitHub repo](https://github.com/mpiccirilli/USMassShootings) you will see all the code in a hidden code chunk.
 
 <p>
 ```{r dataCleaning, eval=TRUE, echo=FALSE,include=FALSE}
@@ -146,7 +151,7 @@ DT[Location == "Santa Barbara,CA"]$Location <- "Santa Barbara ,CA"
 ```
 <p>
 
-Once the data is cleaned we can start creating summary information to break down and analyze the data.  First let's break out the Date column into `Year`, `Month`, and `monthYear`. In the same line of code we'll calculate the total numnber of victims of each incident, `nVictims`. 
+Once the data is cleaned we can start creating summary information to explore the data.  First let's break out the `Date` column into `Year`, `Month`, and `monthYear`. In the same line of code we'll calculate the total numnber of victims of each incident, `nVictims`. 
 
 <p>
 ```{r yearMonthVars, message=FALSE, results='hide'}
@@ -166,6 +171,8 @@ DT[, c("StateFreq", "nVictimsPerState") := list(.N, sum(nVictims)), by = State ]
 
 ```
 <p>
+
+# Summary Info & Plots
 
 Now we can start creating some summary statistics and basic plots to explore the data.  First let's take a look at: 
 
@@ -220,32 +227,7 @@ ggplot(p2[-nrow(p2)], aes(x = monthYear, y = nIncidentsMoYr, size = avgVictimsMo
 ```
 <p>
 
-We can see there seems to be a bit of a trend, so let's try breaking down the number of total vitims into weeks instead of months.  Once the data is in a time series object, we can look to see if there is any autocorrelcation.
-
-```{r weeklyTS1, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
-weeklyIncidents = DT[,.(Date, year, nVictims)][,week := week(Date)][order(Date)]
-weeklyIncidents[,weeklyVictims := sum(nVictims), by = c("year", "week")] 
-weeklyIncidents <- unique(weeklyIncidents[,.(year, week, weeklyVictims)], by = c("year", "week"))
-weeklyTS <- ts(weeklyIncidents[,.(weeklyVictims)], start = c(2013,1), freq = 52)
-acf(weeklyTS)
-```
-<p>
-
-We can see that there's some autocorrelation, it's not very significant, but it is nonetheless still present. 
-
-Now let's forecast the total number of weekly victims over the next year.  To do this, we'll use the Holt-Winters method.  For this method, the extrapolated values are based on the trends in the period which the model was fitted, and would be a sensible prediction assuming the trends continue.  The extrapoloation looks fairly appropriate, however unforeseen events could lead to completely different future values than those shown here.
-
-<p>
-```{r weeklyTS2, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
-
-weeklyHW <- HoltWinters(weeklyTS, seasonal = "multi")
-weeklyPredict <- predict(weeklyHW, n.ahead = 52)
-ts.plot(weeklyTS, weeklyPredict, lty = 1:2, main = "Holt-Winters fit for weekly shooting victims \n 52 weeks")
-
-```
-
-
-Now let's start to take a look at where some of these incidents are occuring. Let's start off by looking at state-level data.  We've already already calculated the `nVictimsPerState`, so here we're just going to sort and plot the data.  Here we plot the top 10 states with the most victims, with stacked by year.
+Now let's start to take a look at where some of these incidents are occuring. Let's start off by looking at state-level data.  We've already calculated the `nVictimsPerState`, so here we're just going to sort and plot the data.  Here we plot the top 10 states with the most victims, with stacked by year.
 
 <p>
 ```{r, top10States, message=FALSE, results='hide', fig.align='center', fig.width=12}
@@ -284,6 +266,41 @@ locationFreqDT = unique(DT[,.(State, Location, LocationFreq, nVictimsLocation)],
 locationFreqDT
 ```
 <p>
+
+
+# Forecasting the number of victims
+
+We saw above that there seems to be a bit of a trend, so let's try breaking down the number of total vitims into weeks instead of months.  We'll then put the data in a time series object to see if there is any autocorrelcation.
+
+```{r weeklyTS1, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
+weeklyIncidents = DT[,.(Date, year, nVictims)][,week := week(Date)][order(Date)]
+weeklyIncidents[,weeklyVictims := sum(nVictims), by = c("year", "week")] 
+weeklyIncidents <- unique(weeklyIncidents[,.(year, week, weeklyVictims)], by = c("year", "week"))
+weeklyTS <- ts(weeklyIncidents[,.(weeklyVictims)], start = c(2013,1), freq = 52)
+acf(weeklyTS)
+```
+<p>
+
+We can see that there's some autocorrelation, it's not very significant, but it is nonetheless still present. 
+
+Now let's forecast the total number of weekly victims over the next year.  To do this, we'll use the Holt-Winters method.  For this method, the extrapolated values are based on the trends in the period which the model was fitted, and would be a sensible prediction assuming the trends continue.  The extrapoloation looks fairly appropriate, however unforeseen events could lead to completely different future values than those shown here.
+
+<p>
+```{r weeklyTS2, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
+library(knitr)
+weeklyHW <- HoltWinters(weeklyTS, seasonal = "multi")
+weeklyPredict <- predict(weeklyHW, n.ahead = 52)
+ts.plot(weeklyTS, weeklyPredict, lty = 1:2, main = "Holt-Winters fit for weekly shooting victims \n 52 weeks")
+```
+```{r weeklyPrediction, echo=TRUE, eval=TRUE, warning=FALSE}
+data.table(yearWeek = c(paste0("2015-",start(weeklyPredict)[2]:52), paste0("2016-",1:23)),
+           nVictims_Prediction = weeklyPredict[1:26],
+           yearWeek = paste0("2016-",c(24:end(weeklyPredict)[2])),
+           nVictims_Prediction = weeklyPredict[27:52])
+```
+
+
+# Plotting data on maps
 
 Let's now take a look at an actual map. The first thing we'll do is download all the `lat` and `lon` coordinates for each location.  This will take a few minutes, depending on your internet connection.  For convenience, I've also uploaded a csv file with all the coordinates to GitHub, so instead of downloading them all now you can simply upload the file.  
 
@@ -332,11 +349,11 @@ print(p4)
 ```
 
 
-Finally, we can hone in on a specific area, and let's say find all the incidents within a certain radius, we'll need to use a few spatial packages.  I'll focus in on Los Angeles, CA, because that is the largest city near San Bernardino, and I'll show all the incidents that occur within a 75 miles radius of the city. 
+We can also hone in on a specific area and find all the incidents within a certain radius of a city.  To do this, we'll need to use a few spatial packages.  I'll focus in on Los Angeles, CA, because that is the largest city near San Bernardino, and I'll show all the incidents that occur within a 75 miles radius of the city. 
 
 First let's create a function that will help us to select the other cities based on their lat/lon coordinates.  The distance calculation below is based on the Great-Circle.
 
-*Note*: I found the two functions below here: [Great-circle distance calculations in R](http://www.r-bloggers.com/great-circle-distance-calculations-in-r)
+*Note: I found the two functions below here: [Great-circle distance calculations in R](http://www.r-bloggers.com/great-circle-distance-calculations-in-r)*
 
 ```{r deg2rad, eval=TRUE, echo=TRUE}
 deg2rad <- function(deg) return(deg*pi/180)
@@ -358,6 +375,7 @@ gcd.slc <- function(long1, lat1, long2, lat2) {
 
 Now we'll create data.tables for our city of interest, and all other cities, then we'll use the fuction created above to find all cities within 75 miles of Los Angeles. 
 
+
 ```{r cityPlot, echo=TRUE, eval=TRUE, results='hide', warning=FALSE}
 
 cityOfInterest = unique(DT[Location == "Los Angeles, CA",.(Location, lon, lat, LocationFreq, nVictimsLocation)])
@@ -365,16 +383,17 @@ otherCities = DT[Location != "Los Angeles, CA",.(Location, lon, lat, LocationFre
 
 dist <- gcd.slc(cityOfInterest$lon, cityOfInterest$lat, otherCities$lon, otherCities$lat)
 distIx <- which( dist <= 75 )
-maxDist <- max(dist[distIx])[1]
-
 metroAreaDT = rbind(unique(otherCities[distIx]), cityOfInterest)
 ```
 ```{r}
 metroAreaDT[,.(Location, LocationFreq, nVictimsLocation)][order(-nVictimsLocation)]
 ```
-Now we're going to convert our data into spatial objects.  The package here uses distance in meters, so we'll use a function to find the maximum meters from the cities we selected above.
 
-*Note*:  The code below was found on [GIS StackExchange](http://gis.stackexchange.com/questions/119736/ggmap-create-circle-symbol-where-radius-represents-distance-miles-or-km)
+
+Finally, we're going to convert our data into spatial objects.  The package here uses distance in meters, so we'll use a function to find the maximum meters from the cities we selected above.
+
+*Note: The code below was found on [GIS StackExchange](http://gis.stackexchange.com/questions/119736/ggmap-create-circle-symbol-where-radius-represents-distance-miles-or-km)*
+
 
 ```{r plotCity1, eval=TRUE, echo=TRUE, results='hide', message=FALSE, fig.align='center', fig.width=12, fig.show='hold', fig.keep='last'}
 cityMap <- gmap("Los Angeles, CA", zoom = 8, scale = 2)
