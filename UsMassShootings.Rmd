@@ -1,0 +1,401 @@
+---
+title: "US Mass Shootings"
+author: "Michael Piccirilli"
+date: "December 6, 2015"
+output: html_document
+---
+
+
+Mass shootings have become a hot topic recently, so I found some data on the website [Shooting Tracker](http://www.shootingtracker.com), which has recorded Mass Shootings from 2013 to present. Each incident is cited by a news source, and is defined as having 4 or more victims, either killed or injured. 
+
+**I also want to start off by saying I am not advocating for or against gun-control, I simply wanted to explore the data**
+
+
+```{r loadPackages, eval = TRUE, echo=TRUE, collapse=TRUE, message=FALSE}
+library(RCurl)
+library(data.table)
+library(reshape2) # install newer data.table package to get melt function
+library(ggmap)
+library(dismo)
+library(rgeos)
+library(scales)
+```
+<p>
+
+There are two options to load the data from Shooting Tracker, the code below shows both methods.
+
+1. Download yearly CSV files directly from the website
+2. Download data onto your computer then laod then into R
+
+I will be using data I downloaded on `December 2, 2015`, after the shooting in San Bernardino, CA, and I've uploaded the file onto my [GitHub repo](https://github.com/mpiccirilli/USMassShootings) so that these results can be reproduced.
+
+<p>
+```{r loadData_option1, echo=TRUE, eval=FALSE}
+
+# Option 1: Via website, direct download
+link2013 <- "http://shootingtracker.com/tracker/2013MASTER.csv"
+link2014 <- "http://shootingtracker.com/tracker/2014MASTER.csv"
+link2015 <- "http://shootingtracker.com/tracker/2015CURRENT.csv"
+
+x <- getURL(link2013)
+shooting2013 <- setDT(read.csv(textConnection(x)))
+
+x <- getURL(link2014)
+shooting2014 <- setDT(read.csv(textConnection(x)))
+
+x <- getURL(link2015)
+shooting2015 <- setDT(read.csv(textConnection(x)))
+
+# The names in the files aren't uniform, need to chnage 2013's and remove
+# the columns referencing an article for support of each observation
+dtList = vector("list", 3)
+dtList[[1]] = shooting2013[, .(date, shooter, killed, wounded, location)]
+setnames(dtList[[1]], names(dtList[[1]]), c("Date", "Shooter", "Dead", "Injured", "Location"))
+dtList[[2]] = shooting2014[, .(Date, Shooter, Dead, Injured, Location)]
+dtList[[3]] = shooting2015[, .(Date, Shooter, Dead, Injured, Location)]
+DT <- rbindlist(dtList)
+
+# Change column classes
+DT[, c("Date","Shooter","Location") := 
+     list(as.Date(Date, format="%m/%d/%Y"), as.character(Shooter), as.character(Location))]
+```
+
+```{r loadData_option2, eval=TRUE, echo=TRUE, cache=TRUE, cache.vars=TRUE}
+# Option 2: Download Files and Load via HD
+setwd('~/Downloads/') # working directory of where you downloaded the file from GitHub
+DT <- fread("MassShootings_20151202.csv")
+head(DT)
+```
+<p>
+
+Once the data is loaded we'll need to go through the `Location` column and manually clean up misspellings or slight variations of the same location.  I've cleaned the data up through 2015-12-02, however I don't show the code here. If you download the **.Rmd** file that produced this page you will see all the code in a hidden code chunk.
+
+<p>
+```{r dataCleaning, eval=TRUE, echo=FALSE,include=FALSE}
+
+# Inspect the location column and clean it up
+table(DT$Location)
+
+# After prior inspection, I've found the follow misspellings
+# or other slight variations of the same location and want to convert
+DT[Location == "Queens, NY"]$Location <- "New York, NY"
+DT[Location == "Brooklyn, NY"]$Location <- "New York, NY"
+DT[Location == "Bronx, NY"]$Location <- "New York, NY"
+DT[Location == "Brooklyn (Crown Heights), NY"]$Location <- "New York, NY"
+DT[Location == "Chicago, Il"]$Location <- "Chicago, IL"
+DT[Location == "New York (Queens), NY"]$Location <- "New York, NY"
+DT[Location == "Manhattan, NY"]$Location <- "New York, NY"
+DT[Location == "St Louis, MO"]$Location  <- "St. Louis, MO"
+DT[Location == "St. Petersberg, FL"]$Location <- "St. Petersburg, FL"
+DT[Location == "Phoenix, Az" ]$Location <- "Phoenix, AZ"
+DT[Location == "Washington DC" | Location == "Washington, D.C."]$Location <- "Washington, DC" 
+DT[Location == "Saginaw, Mi"]$Location <- "Saginaw, MI"
+DT[Location == "Cyprus, TX"]$Location <- "Cypress, TX"
+DT[Location == "Dallas, Tx"]$Location <- "Dallas, TX"
+DT[Location == "Englewood, Illinois"]$Location <- "Englewood, IL"
+DT[Location == "Stockton, Ca"]$Location <- "Stockton, CA"
+DT[Location == "Miami-Dade, FL"]$Location <- "Miami, FL"
+DT[Location == "Oberlin, Ohio"]$Location <- "Oberlin, OH"
+DT[Location == "Sarasota, Fl"]$Location <- "Sarasota, FL"
+DT[Location == "Elgin, Il"]$Location <- "Elgin, IL"
+DT[Location == " Fort Bend County, TX"]$Location <- "Fort Bend County, TX"
+DT[Location == "Atlanta, Ga"]$Location <- "Atlanta, GA"
+DT[Location == "Elgin, Il"]$Location <- "Elgin, IL"
+DT[Location == "Rockford, Il"]$Location <- "Rockford, IL"
+DT[Location == "Fort Lauderdale, Fl"]$Location <- "Fort Lauderdale, FL"
+DT[Location == "Detroit, Mi"]$Location <- "Detroit, MI"
+DT[Location == "Fort Wayne, In"]$Location <- "Fort Wayne, IN"
+DT[Location == "Fort Worth, Tx"]$Location <- "Fort Worth, TX"
+DT[Location == "Harvey, Louisiana"]$Location <- "Harvey, LA"
+DT[Location == "Los Angelas, CA"]$Location <- "Los Angeles, CA"
+DT[Location == "North Charlston, SC"]$Location <- "North Charleston, SC"
+DT[Location == "Kansas City, Mo"]$Location <- "Kansas City, MO"
+DT[Location == "Oklahoma City, Ok"]$Location <- "Oklahoma City, OK"
+DT[Location == "Richmond, Ca"]$Location <- "Richmond, CA"
+DT[Location == "Springfield, Ma"]$Location <- "Springfield, MA"
+DT[Location == "San Juan, Puerto Rico"]$Location <- "San Juan, PR"
+DT[Location == "Alturas, Ca"]$Location <- "Alturas, CA"
+DT[Location == "Fairfield, Ca"]$Location <- "Fairfield, CA"
+DT[Location == "Jackson, Tennessee"]$Location <- "Jackson, TN"
+DT[Location == "Manhatten, Kansas"]$Location <- "Manhatten, KS"
+DT[Location == " Sikeston, Mo"]$Location <- "Sikeston, MO"
+DT[Location == "Jacksonville, Fl"]$Location <- "Jacksonville, FL"
+DT[Location == "Havey, Louisiana"]$Location <- "Harvey, LA"
+DT[Location == "Ottawa, KA"]$Location <- "Ottawa, KS"
+DT[Location == "Witchita, KA"]$Location <- "Wichita, KS"
+DT[Location == "Parsons, KA"]$Location <- "Parsons, KS"
+DT[Location == "Topeka, KA"]$Location <- "Topeka, KS"
+DT[Location == "Winton Hills, OH"]$Location <- "Cincinnati, OH"
+DT[Location == "Suburban Salt Lake City (Midvale), UT"]$Location <- "Salt Lake City, UT"
+DT[grep("Bushwick", DT$Location)]$Location <- "New York, NY"
+DT[Location == "Began in Riverside, CA"]$Location <- "Riverside, CA"
+DT[Location == "Began in Eden, TX"]$Location <- "Eden, TX"
+DT[Location == "Centerville, IL"]$Location <- "Centreville, IL"
+DT[Location == "Cleaveland, OH"]$Location <- "Cleveland, OH"
+DT[Location == "Detriot, MI"]$Location <- "Detroit, MI"
+DT[Location == "Flatbush, NY"]$Location <- "New York, NY"
+DT[Location == "Harbor Gateway (Los Angeles), CA"]$Location <- "Los Angeles, CA"
+DT[Location == "Lea County (Hobbs), NM"]$Location <- "Hobbs, NM"
+DT[Location == "Phillidelphia, PA"]$Location <- "Philadelphia, PA"
+DT[Location == "Pheonix, AZ"]$Location <- "Phoenix, AZ"
+DT[Location =="Phonix, AZ"]$Location <- "Phoenix, AZ"
+DT[Location == "San Francicsco, CA"]$Location <- "San Francisco, CA"
+DT[Location == "San Bernadino, CA"]$Location <- "San Bernardino, CA"
+DT[Location == "Santa Barbara,CA"]$Location <- "Santa Barbara ,CA"
+
+```
+<p>
+
+Once the data is cleaned we can start creating summary information to break down and analyze the data.  First let's break out the Date column into `Year`, `Month`, and `monthYear`. In the same line of code we'll calculate the total numnber of victims of each incident, `nVictims`. 
+
+<p>
+```{r yearMonthVars, message=FALSE, results='hide'}
+DT[, c("year", "month", "monthYear", "nVictims") := 
+     list(year(Date), month(Date), paste0(month(Date), "-", year(Date)),Dead+Injured)]
+```
+<p>
+
+Next we can break out which `State` the incident occured in, as well as calculate the number of incidents have occured in each state, `StateFreq`, and aggregate `nVictimsPerState`.
+
+<p>
+```{r stateVars, message=FALSE, results='hide'}
+
+DT[, State := substr(DT$Location, start = nchar(DT$Location)-1, stop = nchar(DT$Location))]
+
+DT[, c("StateFreq", "nVictimsPerState") := list(.N, sum(nVictims)), by = State ]
+
+```
+<p>
+
+Now we can start creating some summary statistics and basic plots to explore the data.  First let's take a look at: 
+
+- Total number of incidents per year 
+```{r summaryStat1}
+DT[, .N, by = year]
+```
+<p>
+
+- Total number of victims per year
+```{r summaryStat2}
+DT[, sum(nVictims), by = year]
+```
+<p> 
+
+Now we can create some plots of the data. Let's take a look at the distribution of victims for each month of each year. We can see there tends to be an increasing number of shooting victims in the months between late-Spring and early-Fall, and the number of injured (not killed) victims far outweighs the number of victims killed.
+
+<p>
+```{r firstPlot, message=FALSE, results='hide', fig.align='center', fig.width=12}
+DT[, c("nMYDead", "nMYInjured") := list(sum(Dead),sum(Injured)), by = monthYear ]
+
+p1 = DT[,.(year, month, monthYear, nMYDead, nMYInjured)]
+setnames(p1, c("nMYDead", "nMYInjured"), c("nDead", "nInjured"))
+
+p1 <- unique(melt(p1, id = c("year", "month", "monthYear"), 
+                  measure = c("nDead", "nInjured")))
+setnames(p1, "variable", "victimType")
+
+ggplot(p1, aes(x=factor(month), y=value, fill = victimType)) + 
+  geom_bar(stat="identity") + 
+  facet_wrap(~year) + 
+  ggtitle("Number of Victims Per Month By Year") +
+  xlab("Month") +
+  ylab("Victims")
+```
+<p>
+
+Another type of plot to look at is a scatterplot, where the *x-axis* is the `monthYear`, the *y-axis* is the number of incidents, `nIncidentsMoYr`, and the size of the points are the `avgVictimsMoYr`.
+
+<p>
+```{r dotplot, message=FALSE, results='hide', fig.align='center', fig.width=12}
+DT[, c("nIncidentsMoYr", "nVictimsMoYr", "avgVictimsMoYr") := 
+     list(.N, sum(nVictims), mean(nVictims)), by = monthYear]
+
+p2 = unique(DT[,.(monthYear, nIncidentsMoYr, avgVictimsMoYr)])
+p2[, monthYear := as.Date(paste0("1-",p2$monthYear), format="%d-%m-%Y")]
+
+# Excluded December 2015 as there is only 2 incidents 
+ggplot(p2[-nrow(p2)], aes(x = monthYear, y = nIncidentsMoYr, size = avgVictimsMoYr)) +
+  geom_point() + scale_size(range = c(1,13)) +
+  ggtitle("Number of Victims per Month-Year \n Point size = Avg Victims Per Month-Year")
+```
+<p>
+
+We can see there seems to be a bit of a trend, so let's try breaking down the number of total vitims into weeks instead of months.  Once the data is in a time series object, we can look to see if there is any autocorrelcation.
+
+```{r weeklyTS1, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
+weeklyIncidents = DT[,.(Date, year, nVictims)][,week := week(Date)][order(Date)]
+weeklyIncidents[,weeklyVictims := sum(nVictims), by = c("year", "week")] 
+weeklyIncidents <- unique(weeklyIncidents[,.(year, week, weeklyVictims)], by = c("year", "week"))
+weeklyTS <- ts(weeklyIncidents[,.(weeklyVictims)], start = c(2013,1), freq = 52)
+acf(weeklyTS)
+```
+<p>
+
+We can see that there's some autocorrelation, it's not very significant, but it is nonetheless still present. 
+
+Now let's forecast the total number of weekly victims over the next year.  To do this, we'll use the Holt-Winters method.  For this method, the extrapolated values are based on the trends in the period which the model was fitted, and would be a sensible prediction assuming the trends continue.  The extrapoloation looks fairly appropriate, however unforeseen events could lead to completely different future values than those shown here.
+
+<p>
+```{r weeklyTS2, echo=TRUE, eval=TRUE, results='hide', fig.width=12, fig.keep='last'}
+
+weeklyHW <- HoltWinters(weeklyTS, seasonal = "multi")
+weeklyPredict <- predict(weeklyHW, n.ahead = 52)
+ts.plot(weeklyTS, weeklyPredict, lty = 1:2, main = "Holt-Winters fit for weekly shooting victims \n 52 weeks")
+
+```
+
+
+Now let's start to take a look at where some of these incidents are occuring. Let's start off by looking at state-level data.  We've already already calculated the `nVictimsPerState`, so here we're just going to sort and plot the data.  Here we plot the top 10 states with the most victims, with stacked by year.
+
+<p>
+```{r, top10States, message=FALSE, results='hide', fig.align='center', fig.width=12}
+
+top10States = unique(DT[, .(State, nVictimsPerState)])[
+                    order(-nVictimsPerState)][1:10][
+                      ,State := factor(State, levels = State[1:10])]
+
+p3 = unique(DT[State %in% top10States$State,
+                           .(year, State, nVictims)][
+                             ,nVictByYear := sum(nVictims), by=.(year, State) ][
+                               ,nVictims:=NULL][
+                                 ,State := factor(State, levels = top10States$State)] )
+p3[, year := factor(year)]
+
+ggplot(p3, aes(x=factor(State), y=nVictByYear, fill = year)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Top 10 States with Most Victims") +
+  xlab("State") +
+  ylab("Victims")
+
+```
+<p>
+
+If we would like, we can also dig deeper into the data by looking at the most victimous locations. I show the top 10 locations with the most victims, however I will not explore it further now. 
+
+<p>
+```{r top10Locations, message=FALSE, results='hide' }
+DT[, c("LocationFreq", "nVictimsLocation") := list(.N, sum(nVictims)), by = Location]
+
+# Find the locations with the largest number of mass shootings
+locationFreqDT = unique(DT[,.(State, Location, LocationFreq, nVictimsLocation)],
+                        by = "Location")[order(-nVictimsLocation)][1:10]
+```
+```{r printTop10}
+locationFreqDT
+```
+<p>
+
+Let's now take a look at an actual map. The first thing we'll do is download all the `lat` and `lon` coordinates for each location.  This will take a few minutes, depending on your internet connection.  For convenience, I've also uploaded a csv file with all the coordinates to GitHub, so instead of downloading them all now you can simply upload the file.  
+
+Once we have the coordinates loaded, we'll merge them into the main data.table.
+
+<p>
+```{r uploadCoords_hide, eval=TRUE, echo=FALSE, results='hide'}
+setwd('~/Downloads/')
+locationCoords <- fread("shootingCoords.csv")
+setkey(DT, Location)
+setkey(locationCoords, Location)
+DT = locationCoords[DT]
+```
+
+
+```{r, locationCoords, eval=FALSE, echo=TRUE, results='hide'}
+uniqueLocations <- unique(DT$Location)
+coords <- suppressMessages(geocode(uniqueLocations))
+locationCoords = data.table(Location = uniqueLocations,
+                            lon = coords$lon,
+                            lat = coords$lat, key="Location")
+
+# Bring in the lat-lon coordinates
+setkey(DT, Location)
+setkey(locationCoords, Location)
+DT = locationCoords[DT]
+```
+
+Now that we have the coordinates loaded we can plot a map.  First let's plot the average number of victims per incident in each location, `avgVictimsPerLocation`.  Once we have that we can load the map and plot the data.
+
+```{r UsPlot, echo=TRUE, eval=TRUE, results='hide', fig.width=10, fig.align='center', warning=FALSE}
+DT[, avgVictimsPerLocation := mean(nVictims), by = Location]
+
+getTheMap <- suppressMessages(get_map(location = 'united states', 
+                                      zoom = 4, source = 'google'))
+
+mapDT <- unique( DT[, .(lon, lat, avgVictimsPerLocation)] )
+p4 <- suppressMessages( ggmap(getTheMap) + 
+                          geom_point(aes(x=lon, y=lat), 
+                                     data = mapDT,
+                                     size=sqrt(mapDT$avgVictimsPerLocation),
+                                     colour="red", 
+                                     alpha=.5) + 
+                          ggtitle("Avg Number of Victims Per Incident & Location"))
+print(p4)
+```
+
+
+Finally, we can hone in on a specific area, and let's say find all the incidents within a certain radius, we'll need to use a few spatial packages.  I'll focus in on Los Angeles, CA, because that is the largest city near San Bernardino, and I'll show all the incidents that occur within a 75 miles radius of the city. 
+
+First let's create a function that will help us to select the other cities based on their lat/lon coordinates.  The distance calculation below is based on the Great-Circle.
+
+*Note*: I found the two functions below here: [Great-circle distance calculations in R](http://www.r-bloggers.com/great-circle-distance-calculations-in-r)
+
+```{r deg2rad, eval=TRUE, echo=TRUE}
+deg2rad <- function(deg) return(deg*pi/180)
+
+gcd.slc <- function(long1, lat1, long2, lat2) {
+  long1 <- deg2rad(long1)
+  lat1 <- deg2rad(lat1)
+  long2 <- deg2rad(long2)
+  lat2 <- deg2rad(lat2)
+  R <- 6371 # Earth mean radius [km]
+  d <- acos(sin(lat1)*sin(lat2) + cos(lat1)*cos(lat2) * cos(long2-long1)) * R
+  d <- d*0.621371 #in miles
+  return(d) # Distance in miles
+}
+
+
+```
+
+
+Now we'll create data.tables for our city of interest, and all other cities, then we'll use the fuction created above to find all cities within 75 miles of Los Angeles. 
+
+```{r cityPlot, echo=TRUE, eval=TRUE, results='hide', warning=FALSE}
+
+cityOfInterest = unique(DT[Location == "Los Angeles, CA",.(Location, lon, lat, LocationFreq, nVictimsLocation)])
+otherCities = DT[Location != "Los Angeles, CA",.(Location, lon, lat, LocationFreq, nVictimsLocation)]
+
+dist <- gcd.slc(cityOfInterest$lon, cityOfInterest$lat, otherCities$lon, otherCities$lat)
+distIx <- which( dist <= 75 )
+maxDist <- max(dist[distIx])[1]
+
+metroAreaDT = rbind(unique(otherCities[distIx]), cityOfInterest)
+```
+```{r}
+metroAreaDT[,.(Location, LocationFreq, nVictimsLocation)][order(-nVictimsLocation)]
+```
+Now we're going to convert our data into spatial objects.  The package here uses distance in meters, so we'll use a function to find the maximum meters from the cities we selected above.
+
+*Note*:  The code below was found on [GIS StackExchange](http://gis.stackexchange.com/questions/119736/ggmap-create-circle-symbol-where-radius-represents-distance-miles-or-km)
+
+```{r plotCity1, eval=TRUE, echo=TRUE, results='hide', message=FALSE, fig.align='center', fig.width=12, fig.show='hold', fig.keep='last'}
+cityMap <- gmap("Los Angeles, CA", zoom = 8, scale = 2)
+
+coordinates(cityOfInterest) <- ~ lon + lat
+projection(cityOfInterest) <- "+init=epsg:4326"
+centralLocation <- spTransform(cityOfInterest, CRS = CRS(projection(cityMap)))
+
+mile2meter <- function(x) {
+  x * 1609.344
+}
+distLayer <- rgeos::gBuffer(centralLocation, width = mile2meter(75) )
+
+
+plot(cityMap)
+plot(distLayer, col = alpha("blue", .35), add = TRUE)
+
+# now plot the incident locations
+coordinates(metroAreaDT) <- ~ lon + lat
+projection(metroAreaDT) <- "+init=epsg:4326"
+allIncidents <- spTransform(metroAreaDT, CRS = CRS(projection(cityMap)))
+points(allIncidents, cex = 2, pch = 20)
+```
+
