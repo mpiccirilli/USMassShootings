@@ -22,6 +22,7 @@ library(ggmap)
 library(dismo)
 library(rgeos)
 library(scales)
+library(rvest)
 ```
 <p>
 
@@ -264,6 +265,23 @@ locationFreqDT = unique(DT[,.(State, Location, LocationFreq, nVictimsLocation)],
 ```
 ```{r printTop10}
 locationFreqDT
+```
+
+
+```{r populationData, message=FALSE, echo=FALSE, eval=FALSE}
+# Not included in the analysis, but should be used for standardizing the state-level data
+
+url <- "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_population"
+population <- url %>%
+  html() %>%
+  html_nodes(xpath="//*[@id='mw-content-text']/table[2]") %>%
+  html_table()
+population <- data.table(population[[1]])[,.(State, Population)]
+
+population[,Population := as.numeric(gsub(pattern = ",",replacement = "", x = Population))]
+setkey(population, State)
+population[, stateAbbrv := state.abb]
+
 ```
 <p>
 
